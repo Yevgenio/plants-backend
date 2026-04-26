@@ -8,6 +8,8 @@ variables:
 build-and-push:
   stage: build
   image: docker:27
+  tags:
+    - pipeline
   services:
     - docker:27-dind
   variables:
