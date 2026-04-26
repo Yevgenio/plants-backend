@@ -14,9 +14,9 @@ build-and-push:
     - name: docker:27-dind
       command: ["--insecure-registry=10.1.0.11:5050"]
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_CERTDIR: ""
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login "http://10.1.0.11:5050" -u "$CI_REGISTRY_USER" --password-stdin
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest .
     - docker push $IMAGE_NAME:$IMAGE_TAG
