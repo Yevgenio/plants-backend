@@ -24,3 +24,5 @@ build-and-push:
     - docker logout $CI_REGISTRY
   only:
     - main
+
+
