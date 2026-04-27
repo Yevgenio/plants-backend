@@ -1,5 +1,6 @@
 stages:
   - build
+  - deploy
 
 variables:
   IMAGE_NAME: $CI_REGISTRY_IMAGE
@@ -25,4 +26,14 @@ build-and-push:
   only:
     - main
 
-
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  tags:
+    - pipeline
+  script:
+    - echo "$KUBE_CONFIG" | base64 -d > /tmp/kubeconfig
+    - kubectl --kubeconfig=/tmp/kubeconfig set image deployment/gallery-backend gallery-backend=$IMAGE_NAME:$IMAGE_TAG -n gallery
+    - kubectl --kubeconfig=/tmp/kubeconfig rollout status deployment/gallery-backend -n gallery --timeout=120s
+  only:
+    - main
