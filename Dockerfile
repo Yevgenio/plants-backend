@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev --fetch-timeout=60000
+RUN npm ci --omit=dev --fetch-timeout=60000 --no-progress
 
 COPY . .
 
