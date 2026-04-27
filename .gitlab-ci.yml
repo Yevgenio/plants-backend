@@ -28,12 +28,17 @@ build-and-push:
 
 deploy:
   stage: deploy
-  image: bitnami/kubectl:latest
+  image: alpine/git:latest
   tags:
     - pipeline
   script:
-    - echo "$KUBE_CONFIG" | base64 -d > /tmp/kubeconfig
-    - kubectl --kubeconfig=/tmp/kubeconfig set image deployment/gallery-backend gallery-backend=$IMAGE_NAME:$IMAGE_TAG -n gallery
-    - kubectl --kubeconfig=/tmp/kubeconfig rollout status deployment/gallery-backend -n gallery --timeout=120s
+    - git clone http://oauth2:$GITOPS_TOKEN@10.1.0.11/devops/cluster-charts.git
+    - cd cluster-charts
+    - 'sed -i "s/  tag:.*/  tag: $IMAGE_TAG/" gallery-backend/values.yaml'
+    - git config user.email "ci@boukingolts.art"
+    - git config user.name "GitLab CI"
+    - git add gallery-backend/values.yaml
+    - 'git commit -m "ci: update gallery-backend image to $IMAGE_TAG"'
+    - git push
   only:
     - main
