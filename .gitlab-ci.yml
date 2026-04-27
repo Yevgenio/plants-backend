@@ -12,6 +12,8 @@ build-and-push:
   image: docker:27
   tags:
     - pipeline
+  variables:
+    KUBERNETES_NODE_SELECTOR: "kubernetes.io/hostname=worker-01"
   services:
     - name: docker:27-dind
       command: ["--insecure-registry=10.1.0.11:5050", "--tls=false"]
