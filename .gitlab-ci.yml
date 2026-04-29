@@ -16,8 +16,10 @@ build-and-push:
   services:
     - name: docker:27-dind
       command: ["--insecure-registry=10.1.0.11:5050", "--tls=false"]
-  script:
+  before_script:
+    - until docker info > /dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u "$CI_REGISTRY_USER" --password-stdin
+  script:
     - docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest .
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
