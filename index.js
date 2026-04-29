@@ -37,7 +37,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 // Root Route
 app.get('/api', (req, res) => {
-  res.send('System API active.');
+  res.send('System API active!');
 });
 
 // Log Routes
