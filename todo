@@ -5,5 +5,3 @@ Global search scalability risk
 No soft-delete for resources
 Uploads folder not protected
 Password reset & email verification missing
-
-kubectl create secret generic gallery-backend-secret --from-literal=MONGO_URI='  mongodb://mongodb.gallery.svc.cluster.local:27017/gallery' --from-literal=JWT_SECRET='secret-jwt-key' --from-literal=GOOGLE_WEB_CLIENT_ID='change-me' --from-literal=GOOGLE_WEB_CLIENT_SECRET='change-me' --from-literal=GOOGLE_IOS_CLIENT_ID='change-me' --from-literal=GOOGLE_ANDROID_CLIENT_ID='change-me' -n gallery                                          
