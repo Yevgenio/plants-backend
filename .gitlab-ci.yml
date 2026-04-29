@@ -15,7 +15,7 @@ build-and-push:
     - pipeline
   services:
     - name: docker:27-dind
-      command: ["--insecure-registry=10.1.0.11:5050", "--tls=false"]
+      command: ["--tls=false"]
   before_script:
     - timeout 60 sh -c 'until docker info > /dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done'
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u "$CI_REGISTRY_USER" --password-stdin
@@ -34,7 +34,7 @@ deploy:
   tags:
     - pipeline
   script:
-    - git clone http://oauth2:$GITOPS_TOKEN@10.1.0.11/devops/cluster-charts.git
+    - git clone https://oauth2:$GITOPS_TOKEN@$CI_SERVER_HOST/devops/cluster-charts.git
     - cd cluster-charts
     - 'sed -i "s/  tag:.*/  tag: $IMAGE_TAG/" gallery-backend/values.yaml'
     - git config user.email "ci@boukingolts.art"
