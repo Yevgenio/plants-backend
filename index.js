@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 
+dotenv.config({ path: '/vault/secrets/mongo-config', override: true });
 dotenv.config();
 
 const app = express();
