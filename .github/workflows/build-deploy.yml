@@ -1,0 +1,203 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  IMAGE: ghcr.io/yevgenio/gallery-backend
+  NODE_VERSION: "20"
+
+jobs:
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
+      - name: Run audit and capture report
+        run: npm audit --json > audit-report.json || true
+
+      - name: Write audit summary
+        if: always()
+        run: |
+          echo "## Dependency Audit" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const r = require('./audit-report.json');
+            const v = r.metadata?.vulnerabilities || {};
+            console.log('| Severity | Count |');
+            console.log('|----------|-------|');
+            ['critical','high','moderate','low','info'].forEach(s => {
+              if (v[s] !== undefined) console.log(\`| \${s} | \${v[s]} |\`);
+            });
+            const total = Object.values(v).reduce((a,b) => a+b, 0);
+            console.log('');
+            console.log(\`**Total: \${total} vulnerabilities**\`);
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail on high or critical vulnerabilities
+        run: npm audit --audit-level=high --omit=dev
+
+  build:
+    name: Build Image
+    needs: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
+          outputs: type=docker,dest=/tmp/image.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/image.tar
+          retention-days: 1
+
+      - name: Write build summary
+        run: |
+          echo "## Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** \`${{ env.IMAGE }}:${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  scan:
+    name: Security Scan
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load image
+        run: docker load < /tmp/image.tar
+
+      - name: Scan for HIGH and CRITICAL CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
+          format: table
+          output: trivy-report.txt
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Write scan summary
+        if: always()
+        run: |
+          echo "## Security Scan (Trivy)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Severity filter: HIGH, CRITICAL — unfixed CVEs ignored" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat trivy-report.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Block on CRITICAL CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  push:
+    name: Push Image
+    needs: scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Extract short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load and push image
+        run: |
+          docker load < /tmp/image.tar
+          docker push ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
+
+      - name: Write push summary
+        run: |
+          echo "## Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.IMAGE }}:${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    name: Deploy to Cluster
+    needs: push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Checkout homelab-cluster repo
+        uses: actions/checkout@v4
+        with:
+          repository: Yevgenio/homelab-cluster
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Update image tag in values.yaml
+        run: |
+          sed -i "s/tag: \"[^\"]*\"/tag: \"$SHORT_SHA\"/" manifests/gallery-backend/values.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add manifests/gallery-backend/values.yaml
+          git commit -m "deploy: gallery-backend $SHORT_SHA"
+          git push
+
+      - name: Write deploy summary
+        run: |
+          echo "## Deployment Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ArgoCD will detect the tag change and roll out \`${{ env.IMAGE }}:$SHORT_SHA\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pipeline:**  audit → build → scan → push → deploy" >> $GITHUB_STEP_SUMMARY
