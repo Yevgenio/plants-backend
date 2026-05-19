@@ -37,8 +37,44 @@ mongoose.connect(process.env.MONGO_URI)
     .catch(err => console.log(err));
 
 // Root Route
-app.get('/api', (req, res) => {
-  res.send('System API active!');
+app.get('/api', async (req, res) => {
+  const uptimeSec = Math.floor(process.uptime());
+  const h = Math.floor(uptimeSec / 3600);
+  const m = Math.floor((uptimeSec % 3600) / 60);
+  const s = uptimeSec % 60;
+
+  const stateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  const dbState = stateMap[mongoose.connection.readyState] || 'unknown';
+
+  let dbPing = null;
+  let pingMs = null;
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const t = Date.now();
+      await mongoose.connection.db.admin().ping();
+      pingMs = Date.now() - t;
+      dbPing = 'ok';
+    } catch {
+      dbPing = 'failed';
+    }
+  }
+
+  const mem = process.memoryUsage();
+  const mb = (b) => Math.round(b / 1024 / 1024);
+
+  res.json({
+    status: 'ok',
+    uptime: `${h}h ${m}m ${s}s`,
+    environment: process.env.NODE_ENV || 'development',
+    node: process.version,
+    database: { state: dbState, ping: dbPing, ping_ms: pingMs },
+    memory: { heap_used_mb: mb(mem.heapUsed), heap_total_mb: mb(mem.heapTotal), rss_mb: mb(mem.rss) },
+  });
+});
+
+// Kubernetes health probe — not logged
+app.get('/healthz', (req, res) => {
+  res.sendStatus(200);
 });
 
 // Log Routes
