@@ -1,6 +1,8 @@
 const Log = require('../models/log.model');
 
 const logRequest = async (req, res, next) => {
+    if (req.path === '/healthz') return next();
+
     const startTime = Date.now();
 
     res.on('finish', async () => {  // Log only after response is sent
