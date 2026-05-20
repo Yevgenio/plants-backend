@@ -28,7 +28,7 @@ const upload = multer({
     if (file.mimetype.startsWith('image/') && allowedExts.includes(ext)) { // Check if it's an image and has a valid extension
       cb(null, true); // Accept the file
     } else {
-      cb(new Error('Only supported image formats are allowed'), false); // Reject the file
+      cb(new Error('Only supported image formats are allowed')); // Reject the file
     }
   },
   limits: { fileSize: 50 * 1024 * 1024 }, // Limit file size to 50MB
