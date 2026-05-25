@@ -104,13 +104,47 @@ exports.login = async (req, res) => {
 
 exports.settings = async (req, res) => {
   try {
-    const user = req.user;
-    // Respond with the user data
-    res.json(user);
+    const userWithPassword = await User.findById(req.user._id).lean();
+    const { password, ...rest } = userWithPassword;
+    res.json({ ...rest, hasPassword: !!password });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
   }
-}
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { username, email } = req.body;
+    if (email && email !== req.user.email) {
+      const existing = await User.findOne({ email });
+      if (existing) return res.status(409).json({ message: 'Email already in use' });
+    }
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      { ...(username && { username }), ...(email && { email }) },
+      { new: true }
+    ).select('-password');
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ message: 'Both fields required' });
+    const user = await User.findById(req.user._id);
+    if (!user.password) return res.status(400).json({ message: 'Password change not available for this account' });
+    const valid = await bcrypt.compare(currentPassword, user.password);
+    if (!valid) return res.status(401).json({ message: 'Current password is incorrect' });
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
 
 exports.logout = async (req, res) => {
   try {

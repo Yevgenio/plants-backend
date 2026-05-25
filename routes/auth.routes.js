@@ -22,6 +22,10 @@ router.get('/settings', verifyToken, authController.settings);
 
 router.get('/profile', verifyToken, authController.settings);
 
+router.put('/profile', verifyToken, authController.updateProfile);
+
+router.put('/password', verifyToken, authController.updatePassword);
+
 router.post('/refresh', authController.refreshToken);
 
 // router.get('/is-admin', authController.isAdmin)
