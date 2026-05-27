@@ -1,14 +1,28 @@
 const Product = require('../models/product.model');
 const Image = require('../models/image.model');
 
-// Helper to normalize tags input (string or array)
+// Helper to normalize tags/dimensions input (string or array)
 const parseTags = (tags) => {
   if (!tags) return [];
   if (Array.isArray(tags)) return tags;
-  return tags
-    .split(',')
-    .map((t) => t.trim())
-    .filter((t) => t.length);
+  return tags.split(',').map((t) => t.trim()).filter((t) => t.length);
+};
+
+const parseDimensions = (dims) => {
+  if (!dims) return [];
+  const arr = Array.isArray(dims) ? dims : dims.split(',').map(d => d.trim()).filter(Boolean);
+  return arr.map(Number).filter(n => !isNaN(n) && n > 0);
+};
+
+const parseSpecs = (specs) => {
+  if (!specs) return [];
+  if (Array.isArray(specs)) return specs;
+  try { return JSON.parse(specs); } catch { return []; }
+};
+
+const parseBool = (val, fallback = false) => {
+  if (val === undefined || val === null) return fallback;
+  return val === true || val === 'true';
 };
 
 exports.getDistinctCategories = async (req, res) => {
@@ -124,8 +138,11 @@ exports.addNewProduct = async (req, res) => {
     rank: req.body.rank ?? 0,
     featured: req.body.featured ?? 0,
     tags: parseTags(req.body.tags),
-    dimensions: req.body.dimensions || [],
+    dimensions: parseDimensions(req.body.dimensions),
+    dimensionUnit: req.body.dimensionUnit || 'cm',
     year: req.body.year || 0,
+    forSale: parseBool(req.body.forSale),
+    specs: parseSpecs(req.body.specs),
     price: req.body.price ?? 0,
     salePercent: req.body.salePercent ?? 0,
     stock: req.body.stock ?? 1,
@@ -155,12 +172,12 @@ exports.updateProductById = async (req, res) => {
       category: req.body.category || product.category,
       rank: req.body.rank ?? product.rank,
       featured: req.body.featured ?? product.featured,
-      tags:
-        req.body.tags !== undefined
-          ? parseTags(req.body.tags)
-          : product.tags,
-      dimensions: req.body.dimensions || product.dimensions,
+      tags: req.body.tags !== undefined ? parseTags(req.body.tags) : product.tags,
+      dimensions: req.body.dimensions !== undefined ? parseDimensions(req.body.dimensions) : product.dimensions,
+      dimensionUnit: req.body.dimensionUnit || product.dimensionUnit || 'cm',
       year: req.body.year || product.year,
+      forSale: req.body.forSale !== undefined ? parseBool(req.body.forSale) : product.forSale,
+      specs: req.body.specs !== undefined ? parseSpecs(req.body.specs) : product.specs,
       price: req.body.price ?? product.price,
       salePercent: req.body.salePercent ?? product.salePercent,
       stock: req.body.stock ?? product.stock,
