@@ -34,6 +34,15 @@ exports.getDistinctCategories = async (req, res) => {
   }
 };
 
+exports.getDistinctSeries = async (req, res) => {
+  try {
+    const series = (await Product.distinct("series")).filter(s => s && s.trim());
+    res.json(series);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getAllProducts = async (req, res) => {
   try {
     const products = await Product.find().populate('images');
@@ -80,7 +89,7 @@ exports.getProductById = async (req, res) => {
 // Get all products with optional search, filter, and sort
 exports.searchProducts = async (req, res) => {
   try {
-    const { query, category, sort, limit, page } = req.query;
+    const { query, category, series, forSale, exclude, sort, limit, page } = req.query;
 
     // Build query object
     const searchQuery = {};
@@ -97,6 +106,14 @@ exports.searchProducts = async (req, res) => {
       searchQuery.category = { $in: [null, ''] };
     } else if (category) {
       searchQuery.category = category;
+    }
+
+    if (series) searchQuery.series = series;
+    if (forSale === 'true') searchQuery.forSale = true;
+
+    if (exclude) {
+      const excludeIds = exclude.split(',').filter(Boolean);
+      if (excludeIds.length) searchQuery._id = { $nin: excludeIds };
     }
 
     const sortOptions = {};
@@ -138,6 +155,7 @@ exports.addNewProduct = async (req, res) => {
     rank: req.body.rank ?? 0,
     featured: req.body.featured ?? 0,
     tags: parseTags(req.body.tags),
+    series: req.body.series || '',
     dimensions: parseDimensions(req.body.dimensions),
     dimensionUnit: req.body.dimensionUnit || 'cm',
     year: req.body.year || 0,
@@ -173,6 +191,7 @@ exports.updateProductById = async (req, res) => {
       rank: req.body.rank ?? product.rank,
       featured: req.body.featured ?? product.featured,
       tags: req.body.tags !== undefined ? parseTags(req.body.tags) : product.tags,
+      series: req.body.series !== undefined ? req.body.series : product.series,
       dimensions: req.body.dimensions !== undefined ? parseDimensions(req.body.dimensions) : product.dimensions,
       dimensionUnit: req.body.dimensionUnit || product.dimensionUnit || 'cm',
       year: req.body.year || product.year,
