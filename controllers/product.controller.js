@@ -89,7 +89,7 @@ exports.getProductById = async (req, res) => {
 // Get all products with optional search, filter, and sort
 exports.searchProducts = async (req, res) => {
   try {
-    const { query, category, series, forSale, exclude, sort, limit, page } = req.query;
+    const { query, category, series, tag, forSale, exclude, sort, limit, page } = req.query;
 
     // Build query object
     const searchQuery = {};
@@ -109,6 +109,7 @@ exports.searchProducts = async (req, res) => {
     }
 
     if (series) searchQuery.series = series;
+    if (tag) searchQuery.tags = tag;
     if (forSale === 'true') searchQuery.forSale = true;
 
     if (exclude) {
