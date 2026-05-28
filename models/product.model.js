@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema({
   rank: { type: Number, default: 0 },
   featured: { type: Number, default: 0 },
   tags: [{ type: String }],
+  series: { type: String, default: '' },
   dimensions: [{ type: Number }],
   dimensionUnit: { type: String, default: 'cm' },
   year: { type: Number, default: 0 },

@@ -25,6 +25,9 @@ router.get('/search', productController.searchProducts);
 // GET distinct categories
 router.get('/categories', productController.getDistinctCategories);
 
+// GET distinct series
+router.get('/series', productController.getDistinctSeries);
+
 // POST new product
 router.post(
     '/', 
