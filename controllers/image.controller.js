@@ -1,14 +1,13 @@
-const fs = require('fs');
-const path = require('path');
 const Image = require('../models/image.model');
 const Product = require('../models/product.model');
 const Event = require('../models/event.model');
 const ContentBlock = require('../models/contentBlock.model');
+const { deleteObject } = require('../config/s3');
 
 exports.listImages = async (req, res) => {
   try {
     const images = await Image.find().sort({ createdAt: -1 });
-    const imageIds = images.map(img => img._id);
+    const imageIds = images.map((img) => img._id);
 
     const [products, events, blocks] = await Promise.all([
       Product.find({ images: { $in: imageIds } }).select('name images'),
@@ -17,7 +16,6 @@ exports.listImages = async (req, res) => {
     ]);
 
     const usedInMap = {};
-
     for (const product of products) {
       for (const imgId of product.images) {
         const key = imgId.toString();
@@ -25,7 +23,6 @@ exports.listImages = async (req, res) => {
         usedInMap[key].push({ type: 'product', name: product.name, id: product._id });
       }
     }
-
     for (const event of events) {
       for (const imgId of event.images) {
         const key = imgId.toString();
@@ -33,37 +30,23 @@ exports.listImages = async (req, res) => {
         usedInMap[key].push({ type: 'event', name: event.name, id: event._id });
       }
     }
-
     for (const block of blocks) {
-      const blockImages = block.value?.images || [];
-      for (const imgId of blockImages) {
+      for (const imgId of block.value?.images || []) {
         const key = imgId.toString();
         if (!usedInMap[key]) usedInMap[key] = [];
         usedInMap[key].push({ type: 'content', name: block.name, id: block._id });
       }
     }
 
-    const basePath = path.join(__dirname, '..', 'uploads');
-    const result = images.map(img => {
-      let size = null;
-      try {
-        const stat = fs.statSync(path.join(basePath, img.url));
-        size = stat.size;
-      } catch (_) {}
-
-      return {
-        _id: img._id,
-        url: img.url,
-        thumbnail: img.thumbnail,
-        width: img.width,
-        height: img.height,
-        createdAt: img.createdAt,
-        size,
-        usedIn: usedInMap[img._id.toString()] || [],
-      };
-    });
-
-    res.json(result);
+    res.json(images.map((img) => ({
+      _id: img._id,
+      url: img.url,
+      thumbnail: img.thumbnail,
+      width: img.width,
+      height: img.height,
+      createdAt: img.createdAt,
+      usedIn: usedInMap[img._id.toString()] || [],
+    })));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -71,8 +54,9 @@ exports.listImages = async (req, res) => {
 
 exports.deleteImageById = async (req, res) => {
   try {
-    const deletedImage = await Image.findByIdAndDelete(req.params.id);
-    if (!deletedImage) return res.status(404).json({ message: 'Image not found' });
+    const image = await Image.findByIdAndDelete(req.params.id);
+    if (!image) return res.status(404).json({ message: 'Image not found' });
+    await Promise.all([deleteObject(image.url), deleteObject(image.thumbnail)]);
     res.json({ message: 'Image deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
