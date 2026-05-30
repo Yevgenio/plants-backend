@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://boukingolts.art'],
+  origin: ['http://localhost:3000', 'https://source-code.click'],
   credentials: true,
 }));
 
@@ -108,10 +108,6 @@ app.use('/api/content', contentRoutes);
 // Search Routes
 const searchRoutes = require('./routes/search.routes');
 app.use('/api/search', searchRoutes);
-
-// Image file Routes
-const fileRoutes = require('./routes/file.routes');
-app.use('/api/uploads', fileRoutes);
 
 // Image Management Routes
 const imageRoutes = require('./routes/image.routes');

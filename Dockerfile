@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "cp -n /app/assets/default.jpg /app/uploads/default.jpg && node index.js"]
+CMD ["node", "index.js"]
