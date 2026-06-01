@@ -1,5 +1,6 @@
 const Event = require('../models/event.model');
 const Image = require('../models/image.model');
+const { eventViews } = require('../lib/metrics');
 
 // Helper to normalize tags input (string or array)
 const parseTags = (tags) => {
@@ -36,6 +37,7 @@ exports.getEventById = async (req, res) => {
     if (!event) {
       return res.status(404).send('Event not found');
     }
+    eventViews.inc({ event_id: event._id.toString(), event_name: event.name });
     res.json(event);
   } catch (err) {
     res.status(500).json({ message: err.message });

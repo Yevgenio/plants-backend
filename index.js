@@ -25,6 +25,12 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Apply logging middleware
 app.set('trust proxy', true); // Trust AWS proxy to get real IP address
 
+const { register } = require('./lib/metrics');
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
 //const { verifyToken } = require('./middleware/auth.middleware');
 // app.use(verifyToken); // Ensure the user is authenticated first
 

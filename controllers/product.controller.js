@@ -1,5 +1,6 @@
 const Product = require('../models/product.model');
 const Image = require('../models/image.model');
+const { productViews } = require('../lib/metrics');
 
 // Helper to normalize tags/dimensions input (string or array)
 const parseTags = (tags) => {
@@ -80,6 +81,7 @@ exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('images');
     if (!product) return res.status(404).json({ message: 'Product not found' });
+    productViews.inc({ product_id: product._id.toString(), product_name: product.name });
     res.json(product);
   } catch (err) {
     res.status(500).json({ message: err.message });
