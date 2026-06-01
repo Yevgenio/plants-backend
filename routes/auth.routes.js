@@ -10,7 +10,7 @@ const User = require('../models/user.model'); // Adjust the path based on your p
 
 router.get('/me', verifyToken, authController.me);
 
-router.get('/status', verifyToken, authController.status);
+router.get('/status', authController.status);
 
 router.post('/signup', authController.signup);
 
