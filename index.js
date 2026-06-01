@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://source-code.click'],
+  origin: ['http://localhost:3000', 'https://source-code.click', 'https://boukingolts.art', 'https://www.boukingolts.art'],
   credentials: true,
 }));
 
