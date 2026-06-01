@@ -79,39 +79,39 @@ app.get('/healthz', (req, res) => {
 
 // Log Routes
 const logRoutes = require('./routes/log.routes');
-app.use('/api/logs', logRoutes);
+app.use('/logs', logRoutes);
 
 // Authentication Routes
 const authRoutes = require('./routes/auth.routes');
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
 // User Routes
 const userRoutes = require('./routes/user.routes');
-app.use('/api/user', userRoutes);
+app.use('/user', userRoutes);
 
 // Event Routes
 const eventRoutes = require('./routes/event.routes');
-app.use('/api/events', eventRoutes);
+app.use('/events', eventRoutes);
 
 // Product Routes
 const productRoutes = require('./routes/product.routes');
-app.use('/api/products', productRoutes);
+app.use('/products', productRoutes);
 
 // // Memo Routes
 // const memoRoutes = require('./routes/memo.routes');
-// app.use('/api/memos', memoRoutes);
+// app.use('/memos', memoRoutes);
 
 // Content Routes
 const contentRoutes = require('./routes/content.routes');
-app.use('/api/content', contentRoutes);
+app.use('/content', contentRoutes);
 
 // Search Routes
 const searchRoutes = require('./routes/search.routes');
-app.use('/api/search', searchRoutes);
+app.use('/search', searchRoutes);
 
 // Image Management Routes
 const imageRoutes = require('./routes/image.routes');
-app.use('/api/images', imageRoutes);
+app.use('/images', imageRoutes);
 
 const passport = require('passport');
 require('./config/google.strategy'); // Load the Google strategy
