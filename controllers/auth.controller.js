@@ -21,19 +21,44 @@ exports.me = async (req, res) => {
 };
 
 exports.status = async (req, res) => {
-  try {
-    const user = req.user; // This is populated by the `verifyToken` middleware
+  const access_token = req.cookies?.access_token;
+  const refresh_token = req.cookies?.refresh_token;
 
-    // Respond with only the relevant fields
-    res.json({
-      username: user.username,
-      isAdmin: user.role === 'admin',
-      isVerified: user.isVerified || false, // Assuming you have an `isVerified` field
-      userLanguage: user.language || 'en', // Assuming you have a `language` field
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+  const notLoggedIn = () => res.json({ isLoggedIn: false });
+
+  // Try access token
+  if (access_token) {
+    try {
+      const decoded = jwt.verify(access_token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.userId).select('-password');
+      if (!user) return notLoggedIn();
+      return res.json({ isLoggedIn: true, isAdmin: user.role === 'admin', username: user.username });
+    } catch (err) {
+      if (err.name !== 'TokenExpiredError') return notLoggedIn();
+      // fall through to refresh
+    }
   }
+
+  // Try refresh token
+  if (refresh_token) {
+    try {
+      const decoded = jwt.verify(refresh_token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.userId).select('-password');
+      if (!user) return notLoggedIn();
+      const newAccessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      res.cookie('access_token', newAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 60 * 60 * 1000,
+      });
+      return res.json({ isLoggedIn: true, isAdmin: user.role === 'admin', username: user.username });
+    } catch {
+      return notLoggedIn();
+    }
+  }
+
+  return notLoggedIn();
 };
 
 exports.signup = async (req, res) => {
