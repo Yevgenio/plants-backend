@@ -16,6 +16,7 @@ const productSchema = new mongoose.Schema({
   price: { type: Number, default: 0 },
   salePercent: { type: Number, default: 0 },
   images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
+  artist: { type: String, enum: ['elena', 'alexey', 'archive'], default: 'archive' },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
 });

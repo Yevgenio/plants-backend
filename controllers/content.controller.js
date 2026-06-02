@@ -1,12 +1,15 @@
 const ContentBlock = require('../models/contentBlock.model');
+const { getArtist, combinedFilter } = require('../lib/artist');
 
-// Populate helper for images stored inside the value object
 const populateImages = { path: 'value.images', model: 'Image' };
 
 exports.getContentByName = async (req, res) => {
   try {
+    const artist = getArtist(req);
+    // For combined/apex view, fall back to 'alexey' for content (each site has its own)
+    const artistForContent = artist || 'alexey';
     const block = await ContentBlock
-      .findOne({ name: req.params.name })
+      .findOne({ name: req.params.name, artist: artistForContent })
       .populate(populateImages);
     if (!block) return res.status(404).json({ message: 'Not found' });
     res.json(block.value);
@@ -17,14 +20,13 @@ exports.getContentByName = async (req, res) => {
 
 exports.setContentByName = async (req, res) => {
   try {
+    const artist = getArtist(req) || 'alexey';
     const value = { ...req.body };
-    if (Array.isArray(req.processedImages)) {
-      value.images = req.processedImages;
-    }
+    if (Array.isArray(req.processedImages)) value.images = req.processedImages;
 
     const updated = await ContentBlock.findOneAndUpdate(
-      { name: req.params.name },
-      { value },
+      { name: req.params.name, artist },
+      { value, artist },
       { upsert: true, new: true }
     ).populate(populateImages);
 
@@ -36,7 +38,8 @@ exports.setContentByName = async (req, res) => {
 
 exports.getAllContent = async (req, res) => {
   try {
-    const blocks = await ContentBlock.find().populate(populateImages);
+    const artist = getArtist(req) || 'alexey';
+    const blocks = await ContentBlock.find({ artist }).populate(populateImages);
     res.json(blocks.map((b) => ({ name: b.name, value: b.value })));
   } catch (err) {
     res.status(500).json({ error: err.message });

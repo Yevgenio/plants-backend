@@ -9,8 +9,9 @@ const eventSchema = new mongoose.Schema({
   images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
   date: { type: Date, required: true }, // Date of the event
   location: String,
+  artist: { type: String, enum: ['elena', 'alexey', 'archive'], default: 'archive' },
   createdAt: { type: Date, default: Date.now },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },  // User field
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
 });
 
 // Add a text index to enable full-text search
