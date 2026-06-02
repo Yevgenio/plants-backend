@@ -1,8 +1,8 @@
 const Product = require('../models/product.model');
 const Image = require('../models/image.model');
 const { productViews } = require('../lib/metrics');
+const { artistFilter, getArtist } = require('../lib/artist');
 
-// Helper to normalize tags/dimensions input (string or array)
 const parseTags = (tags) => {
   if (!tags) return [];
   if (Array.isArray(tags)) return tags;
@@ -28,7 +28,7 @@ const parseBool = (val, fallback = false) => {
 
 exports.getDistinctCategories = async (req, res) => {
   try {
-    const categories = await Product.distinct("category");
+    const categories = await Product.distinct("category", artistFilter(req));
     res.json(categories);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -37,7 +37,7 @@ exports.getDistinctCategories = async (req, res) => {
 
 exports.getDistinctSeries = async (req, res) => {
   try {
-    const series = (await Product.distinct("series")).filter(s => s && s.trim());
+    const series = (await Product.distinct("series", artistFilter(req))).filter(s => s && s.trim());
     res.json(series);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -46,7 +46,7 @@ exports.getDistinctSeries = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find().populate('images');
+    const products = await Product.find(artistFilter(req)).populate('images');
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -55,7 +55,7 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProductsByRank = async (req, res) => {
   try {
-    const products = await Product.find()
+    const products = await Product.find(artistFilter(req))
       .populate('images')
       .sort({ rank: -1 });
     res.json(products);
@@ -66,7 +66,7 @@ exports.getProductsByRank = async (req, res) => {
 
 exports.getFeaturedProducts = async (req, res) => {
   try {
-    const products = await Product.find({ featured: { $ne: 0 } })
+    const products = await Product.find({ ...artistFilter(req), featured: { $ne: 0 } })
       .populate('images')
       .sort({ featured: -1 });
     res.json(products);
@@ -75,8 +75,6 @@ exports.getFeaturedProducts = async (req, res) => {
   }
 };
 
-
-// Get a product by ID
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('images');
@@ -88,13 +86,12 @@ exports.getProductById = async (req, res) => {
   }
 };
 
-// Get all products with optional search, filter, and sort
 exports.searchProducts = async (req, res) => {
   try {
     const { query, category, series, tag, forSale, exclude, sort, limit, page } = req.query;
 
-    // Build query object
-    const searchQuery = {};
+    const searchQuery = { ...artistFilter(req) };
+
     if (query) {
       searchQuery.$or = [
         { name: { $regex: query, $options: 'i' } },
@@ -120,9 +117,7 @@ exports.searchProducts = async (req, res) => {
     }
 
     const sortOptions = {};
-    if (sort === 'recent') {
-      sortOptions.createdAt = -1;
-    }
+    if (sort === 'recent') sortOptions.createdAt = -1;
 
     const itemsPerPage = parseInt(limit) || 100;
     const currentPage = parseInt(page) || 1;
@@ -138,11 +133,7 @@ exports.searchProducts = async (req, res) => {
 
     res.json({
       data: products,
-      pagination: {
-        total: totalCount,
-        page: currentPage,
-        itemsPerPage,
-      },
+      pagination: { total: totalCount, page: currentPage, itemsPerPage },
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -151,25 +142,25 @@ exports.searchProducts = async (req, res) => {
 
 exports.addNewProduct = async (req, res) => {
   try {
-  const product = new Product({
-    name: req.body.name,
-    description: req.body.description,
-    category: req.body.category,
-    rank: req.body.rank ?? 0,
-    featured: req.body.featured ?? 0,
-    tags: parseTags(req.body.tags),
-    series: req.body.series || '',
-    dimensions: parseDimensions(req.body.dimensions),
-    dimensionUnit: req.body.dimensionUnit || 'cm',
-    year: req.body.year || 0,
-    forSale: parseBool(req.body.forSale),
-    specs: parseSpecs(req.body.specs),
-    price: req.body.price ?? 0,
-    salePercent: req.body.salePercent ?? 0,
-    stock: req.body.stock ?? 1,
-    images: req.processedImages || [],
-    createdBy: req.user._id,
-  });
+    const product = new Product({
+      name: req.body.name,
+      description: req.body.description,
+      category: req.body.category,
+      rank: req.body.rank ?? 0,
+      featured: req.body.featured ?? 0,
+      tags: parseTags(req.body.tags),
+      series: req.body.series || '',
+      dimensions: parseDimensions(req.body.dimensions),
+      dimensionUnit: req.body.dimensionUnit || 'cm',
+      year: req.body.year || 0,
+      forSale: parseBool(req.body.forSale),
+      specs: parseSpecs(req.body.specs),
+      price: req.body.price ?? 0,
+      salePercent: req.body.salePercent ?? 0,
+      artist: req.body.artist || 'archive',
+      images: req.processedImages || [],
+      createdBy: req.user._id,
+    });
 
     const newProduct = await product.save();
     await newProduct.populate('images');
@@ -179,13 +170,10 @@ exports.addNewProduct = async (req, res) => {
   }
 };
 
-
 exports.updateProductById = async (req, res) => {
   try {
     const product = req.currentProduct || await Product.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
+    if (!product) return res.status(404).json({ message: 'Product not found' });
 
     const updateData = {
       name: req.body.name || product.name,
@@ -202,9 +190,7 @@ exports.updateProductById = async (req, res) => {
       specs: req.body.specs !== undefined ? parseSpecs(req.body.specs) : product.specs,
       price: req.body.price ?? product.price,
       salePercent: req.body.salePercent ?? product.salePercent,
-      stock: req.body.stock ?? product.stock,
-      startsAt: req.body.startsAt || product.startsAt,
-      endsAt: req.body.endsAt || product.endsAt,
+      artist: req.body.artist || product.artist,
       images: req.processedImages || product.images,
     };
 
@@ -221,7 +207,6 @@ exports.updateProductById = async (req, res) => {
   }
 };
 
-// Delete a product by ID
 exports.deleteProductById = async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);

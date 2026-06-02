@@ -1,11 +1,13 @@
 const Marquee = require('../models/marquee.model');
 const Product = require('../models/product.model');
+const { getArtist } = require('../lib/artist');
 
 const DEFAULT_NAME = 'home';
 
 exports.getMarqueeProductIds = async (req, res) => {
   try {
-    const marquee = await Marquee.findOne({ name: DEFAULT_NAME });
+    const artist = getArtist(req) || 'alexey';
+    const marquee = await Marquee.findOne({ name: DEFAULT_NAME, artist });
     if (!marquee) return res.json([]);
     res.json(marquee.productIds.map(id => id.toString()));
   } catch (err) {
@@ -16,9 +18,10 @@ exports.getMarqueeProductIds = async (req, res) => {
 exports.updateMarqueeProductIds = async (req, res) => {
   try {
     if (!Array.isArray(req.body)) return res.status(400).json({ message: 'Invalid data' });
+    const artist = getArtist(req) || 'alexey';
     const marquee = await Marquee.findOneAndUpdate(
-      { name: DEFAULT_NAME },
-      { productIds: req.body },
+      { name: DEFAULT_NAME, artist },
+      { productIds: req.body, artist },
       { new: true, upsert: true }
     );
     res.json(marquee.productIds.map(id => id.toString()));
@@ -29,7 +32,8 @@ exports.updateMarqueeProductIds = async (req, res) => {
 
 exports.getMarqueeProducts = async (req, res) => {
   try {
-    const marquee = await Marquee.findOne({ name: DEFAULT_NAME });
+    const artist = getArtist(req) || 'alexey';
+    const marquee = await Marquee.findOne({ name: DEFAULT_NAME, artist });
     if (!marquee) return res.json([]);
     const ids = marquee.productIds;
     const products = await Product.find({ _id: { $in: ids } }).populate('images');
@@ -44,10 +48,11 @@ exports.getMarqueeProducts = async (req, res) => {
 
 exports.addProductToMarquee = async (req, res) => {
   try {
+    const artist = getArtist(req) || 'alexey';
     const { id } = req.params;
     const marquee = await Marquee.findOneAndUpdate(
-      { name: DEFAULT_NAME },
-      { $addToSet: { productIds: id } },
+      { name: DEFAULT_NAME, artist },
+      { $addToSet: { productIds: id }, artist },
       { new: true, upsert: true }
     );
     res.json(marquee.productIds.map(i => i.toString()));
@@ -58,9 +63,10 @@ exports.addProductToMarquee = async (req, res) => {
 
 exports.removeProductFromMarquee = async (req, res) => {
   try {
+    const artist = getArtist(req) || 'alexey';
     const { id } = req.params;
     const marquee = await Marquee.findOneAndUpdate(
-      { name: DEFAULT_NAME },
+      { name: DEFAULT_NAME, artist },
       { $pull: { productIds: id } },
       { new: true }
     );

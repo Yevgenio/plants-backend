@@ -1,13 +1,13 @@
 const Product = require('../models/product.model');
-const Event = require('../models/event.model'); 
-const Search = require('../models/search.model'); 
-// const User = require('../models/user.model'); 
+const Event = require('../models/event.model');
+const Search = require('../models/search.model');
+const { artistFilter } = require('../lib/artist');
 
 exports.globalSearch = async (req, res) => {
   const { query, limit, page } = req.query;
-  const searchQuery = {};
+  const baseFilter = artistFilter(req);
+  const searchQuery = { ...baseFilter };
 
-  // Build search query
   if (query) {
     searchQuery.$or = [
       { name: { $regex: query, $options: 'i' } },
@@ -17,20 +17,15 @@ exports.globalSearch = async (req, res) => {
     ];
   }
 
-  // Set limit and page for pagination
-  const itemsPerPage = parseInt(limit) || 30; // Default 30 items per page
-  const currentPage = parseInt(page) || 1; // Default to page 1
+  const itemsPerPage = parseInt(limit) || 30;
+  const currentPage = parseInt(page) || 1;
   const skip = (currentPage - 1) * itemsPerPage;
 
   try {
     const [products, events, productsCount, eventsCount] = await Promise.all([
-      // Fetch products with pagination
       Product.find(searchQuery).skip(skip).limit(itemsPerPage),
-      // Fetch events with pagination
       Event.find(searchQuery).skip(skip).limit(itemsPerPage),
-      // Total count for products
       Product.countDocuments(searchQuery),
-      // Total count for events
       Event.countDocuments(searchQuery),
     ]);
 
