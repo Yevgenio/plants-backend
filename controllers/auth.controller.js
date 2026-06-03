@@ -46,7 +46,7 @@ exports.status = async (req, res) => {
       const decoded = jwt.verify(refresh_token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId).select('-password');
       if (!user) return notLoggedIn();
-      const newAccessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const newAccessToken = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
       res.cookie('access_token', newAccessToken, { ...COOKIE_OPTIONS, maxAge: 60 * 60 * 1000 });
       return res.json({ isLoggedIn: true, isAdmin: user.role === 'admin', username: user.username });
     } catch {
@@ -84,16 +84,16 @@ exports.login = async (req, res) => {
 
     // Access token (1-hour expiration)
     const access_token = jwt.sign(
-      { userId: user._id }, 
-      process.env.JWT_SECRET, 
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
     // Refresh token (6-month expiration)
     const refresh_token = jwt.sign(
-      { userId: user._id }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '180d' } // 6 months
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '180d' }
     );
 
     // Set the access token as HTTP-only cookie
@@ -211,7 +211,7 @@ exports.refreshToken = async (req, res) => {
 
         // Generate a new access token
         const newAccessToken = jwt.sign(
-            { userId: user._id },
+            { userId: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
