@@ -8,6 +8,7 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'Strict',
+  ...(process.env.NODE_ENV === 'production' && { domain: '.boukingolts.art' }),
 };
 
 exports.me = async (req, res) => {
@@ -46,12 +47,7 @@ exports.status = async (req, res) => {
       const user = await User.findById(decoded.userId).select('-password');
       if (!user) return notLoggedIn();
       const newAccessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('access_token', newAccessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
-        maxAge: 60 * 60 * 1000,
-      });
+      res.cookie('access_token', newAccessToken, { ...COOKIE_OPTIONS, maxAge: 60 * 60 * 1000 });
       return res.json({ isLoggedIn: true, isAdmin: user.role === 'admin', username: user.username });
     } catch {
       return notLoggedIn();
@@ -101,12 +97,7 @@ exports.login = async (req, res) => {
     );
 
     // Set the access token as HTTP-only cookie
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Use HTTPS only in production
-      sameSite: 'Strict',
-      maxAge: 30 * 60 * 1000, // 30 minutes
-    });
+    res.cookie('access_token', access_token, { ...COOKIE_OPTIONS, maxAge: 30 * 60 * 1000 });
 
     // Optionally set refresh token too
     res.cookie('refresh_token', refresh_token, {
@@ -225,12 +216,7 @@ exports.refreshToken = async (req, res) => {
             { expiresIn: '1h' }
         );
 
-        res.cookie('access_token', newAccessToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'Strict',
-          maxAge: 60 * 60 * 1000, // 1 hour (match JWT expiry)
-        });
+        res.cookie('access_token', newAccessToken, { ...COOKIE_OPTIONS, maxAge: 60 * 60 * 1000 });
 
         res.status(200).json({username: username, access_token: newAccessToken });
       });
