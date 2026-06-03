@@ -165,16 +165,9 @@ exports.updatePassword = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     // Clear the cookies
-    res.clearCookie('access_token', {
-      ...COOKIE_OPTIONS,
-    });
-    res.clearCookie('refresh_token', {
-      ...COOKIE_OPTIONS,
-    });
-    res.clearCookie('user_role', user.role, {
-      ...COOKIE_OPTIONS,
-      httpOnly: false,
-    });
+    res.clearCookie('access_token', { ...COOKIE_OPTIONS });
+    res.clearCookie('refresh_token', { ...COOKIE_OPTIONS });
+    res.clearCookie('user_role', { ...COOKIE_OPTIONS, httpOnly: false });
     
     
     // TODO: maybe invalidate the refresh token in the database (if stored)
