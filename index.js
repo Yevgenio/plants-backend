@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://source-code.click', 'https://boukingolts.art', 'https://www.boukingolts.art', 'https://elena.boukingolts.art', 'https://alexey.boukingolts.art', 'https://archive.boukingolts.art'],
+  origin: ['http://localhost:3000', 'https://source-code.click', 'https://boukingolts.art', 'https://www.boukingolts.art', 'https://elena.boukingolts.art', 'https://alexey.boukingolts.art', 'https://archive.boukingolts.art', 'https://staging.boukingolts.art'],
   credentials: true,
 }));
 
@@ -118,6 +118,10 @@ app.use('/search', searchRoutes);
 // Image Management Routes
 const imageRoutes = require('./routes/image.routes');
 app.use('/images', imageRoutes);
+
+// Admin Routes (staging-only endpoints like clone-from-prod)
+const adminRoutes = require('./routes/admin.routes');
+app.use('/admin', adminRoutes);
 
 const passport = require('passport');
 require('./config/google.strategy'); // Load the Google strategy

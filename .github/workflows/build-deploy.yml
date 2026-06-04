@@ -2,7 +2,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 env:
   IMAGE: ghcr.io/yevgenio/gallery-backend
@@ -11,6 +11,7 @@ env:
 jobs:
   audit:
     name: Dependency Audit
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +47,7 @@ jobs:
 
   build:
     name: Build Image
+    if: github.ref == 'refs/heads/dev'
     needs: audit
     runs-on: ubuntu-latest
     steps:
@@ -88,6 +90,7 @@ jobs:
 
   scan:
     name: Security Scan
+    if: github.ref == 'refs/heads/dev'
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -135,6 +138,7 @@ jobs:
 
   push:
     name: Push Image
+    if: github.ref == 'refs/heads/dev'
     needs: scan
     runs-on: ubuntu-latest
     permissions:
@@ -175,8 +179,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- \`${{ env.IMAGE }}:${{ env.SHORT_SHA }}\` (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
 
-  deploy:
-    name: Deploy to Cluster
+  deploy-staging:
+    name: Deploy to Staging
+    if: github.ref == 'refs/heads/dev'
     needs: push
     runs-on: ubuntu-latest
     steps:
@@ -189,22 +194,60 @@ jobs:
           repository: Yevgenio/boukingolts-cluster
           token: ${{ secrets.GITOPS_TOKEN }}
 
-      - name: Update image tag in values.yaml
+      - name: Update staging image tag
         run: |
-          sed -i "s/tag: \"[^\"]*\"/tag: \"$SHORT_SHA\"/" manifests/gallery-backend/values.yaml
+          sed -i "s/tag: \"[^\"]*\"/tag: \"$SHORT_SHA\"/" manifests/gallery-backend-staging/values.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add manifests/gallery-backend-staging/values.yaml
+          git commit -m "deploy: gallery-backend $SHORT_SHA to staging"
+          git push
+
+      - name: Write deploy summary
+        run: |
+          echo "## Deployed to Staging" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.IMAGE }}:$SHORT_SHA\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Host: staging.api.boukingolts.art" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pipeline:** audit → build → scan → push → deploy-staging" >> $GITHUB_STEP_SUMMARY
+
+  promote-prod:
+    name: Promote to Production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout boukingolts-cluster repo
+        uses: actions/checkout@v4
+        with:
+          repository: Yevgenio/boukingolts-cluster
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Read staging image tag
+        run: |
+          TAG=$(grep 'tag:' manifests/gallery-backend-staging/values.yaml | sed "s/.*tag: \"\(.*\)\"/\1/")
+          echo "STAGING_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Promote staging tag to production
+        run: |
+          sed -i "s/tag: \"[^\"]*\"/tag: \"$STAGING_TAG\"/" manifests/gallery-backend/values.yaml
 
       - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add manifests/gallery-backend/values.yaml
-          git commit -m "deploy: gallery-backend $SHORT_SHA"
+          git commit -m "promote: gallery-backend $STAGING_TAG to prod"
           git push
 
-      - name: Write deploy summary
+      - name: Write promote summary
         run: |
-          echo "## Deployment Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "## Promoted to Production" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "ArgoCD will detect the tag change and roll out \`${{ env.IMAGE }}:$SHORT_SHA\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ env.IMAGE }}:$STAGING_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Promoted from staging (no rebuild)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Pipeline:**  audit → build → scan → push → deploy" >> $GITHUB_STEP_SUMMARY
+          echo "**Pipeline:** promote (image built and tested on dev)" >> $GITHUB_STEP_SUMMARY
