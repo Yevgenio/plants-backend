@@ -44,10 +44,12 @@ exports.verifyToken = async (req, res, next) => {
 
       // Send new access token as cookie
       res.cookie('access_token', newAccessToken, {
+        path: '/',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'Strict',
         maxAge: 60 * 60 * 1000, // 1 hour
+        ...(process.env.NODE_ENV === 'production' && { domain: '.boukingolts.art' }),
       });
       
       return next();
