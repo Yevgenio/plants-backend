@@ -69,6 +69,9 @@ exports.signup = async (req, res) => {
     await user.save();
     res.status(201).json({ message: 'User created!' });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'An account with that email already exists' });
+    }
     res.status(500).json({ error: err.message });
   }
 };
