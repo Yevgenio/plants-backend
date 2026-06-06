@@ -22,7 +22,8 @@ const logRequest = async (req, res, next) => {
         ip = ip.replace(/^::ffff:/, '');
 
         const route = normalizeRoute(req.originalUrl);
-        httpRequestsTotal.inc({ method: req.method, route, status: res.statusCode });
+        const artist = req.query.artist || 'none';
+        httpRequestsTotal.inc({ method: req.method, route, status: res.statusCode, artist });
         httpRequestDuration.observe({ method: req.method, route }, duration / 1000);
 
         const logData = {
