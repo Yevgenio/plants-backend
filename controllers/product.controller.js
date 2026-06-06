@@ -79,7 +79,8 @@ exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('images');
     if (!product) return res.status(404).json({ message: 'Product not found' });
-    productViews.inc({ product_id: product._id.toString(), product_name: product.name });
+    const artist = req.query.artist || 'none';
+    productViews.inc({ product_id: product._id.toString(), product_name: product.name, artist });
     res.json(product);
   } catch (err) {
     res.status(500).json({ message: err.message });
