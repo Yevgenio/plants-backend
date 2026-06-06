@@ -103,10 +103,6 @@ app.use('/events', eventRoutes);
 const productRoutes = require('./routes/product.routes');
 app.use('/products', productRoutes);
 
-// // Memo Routes
-// const memoRoutes = require('./routes/memo.routes');
-// app.use('/memos', memoRoutes);
-
 // Content Routes
 const contentRoutes = require('./routes/content.routes');
 app.use('/content', contentRoutes);
