@@ -31,7 +31,8 @@ exports.getEventById = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id).populate('images');
     if (!event) return res.status(404).send('Event not found');
-    eventViews.inc({ event_id: event._id.toString(), event_name: event.name });
+    const artist = req.query.artist || 'none';
+    eventViews.inc({ event_id: event._id.toString(), event_name: event.name, artist });
     res.json(event);
   } catch (err) {
     res.status(500).json({ message: err.message });
