@@ -30,12 +30,13 @@ const processUploadedImages = async (req, res, next) => {
         const base = `${uniqueSuffix}-${shortName}${ext}`;
         const thumbnailFilename = `${base.slice(0, -ext.length)}-th${ext}`;
 
-        const { data: thumbBuffer, info } = await sharp(file.buffer)
-          .resize({ width: 400 })
-          .toBuffer({ resolveWithObject: true });
+        const [{ data: fullBuffer, info }, { data: thumbBuffer }] = await Promise.all([
+          sharp(file.buffer).rotate().toBuffer({ resolveWithObject: true }),
+          sharp(file.buffer).rotate().resize({ width: 400 }).toBuffer({ resolveWithObject: true }),
+        ]);
 
         await Promise.all([
-          putObject(base, file.buffer, file.mimetype),
+          putObject(base, fullBuffer, file.mimetype),
           putObject(thumbnailFilename, thumbBuffer, file.mimetype),
         ]);
 
@@ -63,9 +64,12 @@ const manageImages = async (req, res, next) => {
       newDocs = await Image.insertMany(req.processedImages);
     }
 
-    const filenameMap = {};
-    (req.files?.images || []).forEach((file, idx) => {
-      if (newDocs[idx]) filenameMap[file.originalname] = newDocs[idx]._id.toString();
+    const uploadedFiles = req.files?.images || [];
+    // Per-filename queue so duplicate original names resolve in upload order.
+    const queueByOriginalName = {};
+    uploadedFiles.forEach((file, idx) => {
+      if (!newDocs[idx]) return;
+      (queueByOriginalName[file.originalname] ??= []).push(newDocs[idx]._id.toString());
     });
 
     let sorted = [];
@@ -76,7 +80,8 @@ const manageImages = async (req, res, next) => {
     const finalIds = [];
     sorted.forEach((img) => {
       if (img.new) {
-        const id = filenameMap[img.filename];
+        const queue = queueByOriginalName[img.filename];
+        const id = queue?.shift();
         if (id) finalIds.push(id);
       } else if (img.id) {
         finalIds.push(img.id);
