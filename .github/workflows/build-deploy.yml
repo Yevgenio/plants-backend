@@ -228,7 +228,8 @@ jobs:
 
       - name: Read staging image tag
         run: |
-          TAG=$(grep 'tag:' manifests/gallery-backend-staging/values.yaml | sed "s/.*tag: \"\(.*\)\"/\1/")
+          TAG=$(grep -E '^\s+tag:' manifests/gallery-backend-staging/values.yaml | head -1 | sed 's/.*tag: "\(.*\)"/\1/')
+          if [ -z "$TAG" ]; then echo "ERROR: could not parse staging tag" && exit 1; fi
           echo "STAGING_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Promote staging tag to production
