@@ -33,6 +33,7 @@ exports.status = async (req, res) => {
       const decoded = jwt.verify(access_token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId).select('-password');
       if (!user) return notLoggedIn();
+      res.cookie('user_role', user.role, { ...COOKIE_OPTIONS, httpOnly: false, maxAge: 60 * 60 * 1000 });
       return res.json({ isLoggedIn: true, isAdmin: user.role === 'admin', username: user.username });
     } catch (err) {
       if (err.name !== 'TokenExpiredError') return notLoggedIn();
@@ -48,6 +49,7 @@ exports.status = async (req, res) => {
       if (!user) return notLoggedIn();
       const newAccessToken = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
       res.cookie('access_token', newAccessToken, { ...COOKIE_OPTIONS, maxAge: 60 * 60 * 1000 });
+      res.cookie('user_role', user.role, { ...COOKIE_OPTIONS, httpOnly: false, maxAge: 60 * 60 * 1000 });
       return res.json({ isLoggedIn: true, isAdmin: user.role === 'admin', username: user.username });
     } catch {
       return notLoggedIn();
