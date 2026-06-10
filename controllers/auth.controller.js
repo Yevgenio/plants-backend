@@ -2,13 +2,14 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const { COOKIE_DOMAIN } = require('../config/env');
 
 const COOKIE_OPTIONS = {
   path: '/',
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'Strict',
-  ...(process.env.NODE_ENV === 'production' && { domain: '.boukingolts.art' }),
+  ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN }),
 };
 
 exports.me = async (req, res) => {

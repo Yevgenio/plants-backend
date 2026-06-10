@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const { COOKIE_DOMAIN } = require('../config/env');
 
 exports.verifyToken = async (req, res, next) => {
   let access_token = req.cookies?.access_token;
@@ -49,7 +50,7 @@ exports.verifyToken = async (req, res, next) => {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'Strict',
         maxAge: 60 * 60 * 1000, // 1 hour
-        ...(process.env.NODE_ENV === 'production' && { domain: '.boukingolts.art' }),
+        ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN }),
       });
       
       return next();
