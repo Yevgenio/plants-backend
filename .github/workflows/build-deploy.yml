@@ -5,7 +5,7 @@ on:
     branches: [main, dev]
 
 env:
-  IMAGE: ghcr.io/yevgenio/gallery-backend
+  IMAGE: ghcr.io/yevgenio/plants-backend
   NODE_VERSION: "24"
 
 jobs:
@@ -188,22 +188,22 @@ jobs:
       - name: Extract short SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - name: Checkout boukingolts-cluster repo
+      - name: Checkout plants-cluster repo
         uses: actions/checkout@v4
         with:
-          repository: Yevgenio/boukingolts-cluster
+          repository: Yevgenio/plants-cluster
           token: ${{ secrets.GITOPS_TOKEN }}
 
       - name: Update staging image tag
         run: |
-          sed -i "s/tag: \"[^\"]*\"/tag: \"$SHORT_SHA\"/" manifests/gallery-backend-staging/values.yaml
+          sed -i "s/tag: \"[^\"]*\"/tag: \"$SHORT_SHA\"/" manifests/backend-staging/values.yaml
 
       - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add manifests/gallery-backend-staging/values.yaml
-          git commit -m "deploy: gallery-backend $SHORT_SHA to staging"
+          git add manifests/backend-staging/values.yaml
+          git commit -m "deploy: plants-backend $SHORT_SHA to staging"
           git push
 
       - name: Write deploy summary
@@ -211,7 +211,7 @@ jobs:
           echo "## Deployed to Staging" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Image: \`${{ env.IMAGE }}:$SHORT_SHA\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Host: staging.api.boukingolts.art" >> $GITHUB_STEP_SUMMARY
+          echo "- Host: staging.api.boukingolts.dev" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pipeline:** audit → build → scan → push → deploy-staging" >> $GITHUB_STEP_SUMMARY
 
@@ -220,28 +220,28 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout boukingolts-cluster repo
+      - name: Checkout plants-cluster repo
         uses: actions/checkout@v4
         with:
-          repository: Yevgenio/boukingolts-cluster
+          repository: Yevgenio/plants-cluster
           token: ${{ secrets.GITOPS_TOKEN }}
 
       - name: Read staging image tag
         run: |
-          TAG=$(grep -E '^\s+tag:' manifests/gallery-backend-staging/values.yaml | head -1 | sed 's/.*tag: "\(.*\)"/\1/')
+          TAG=$(grep -E '^\s+tag:' manifests/backend-staging/values.yaml | head -1 | sed 's/.*tag: "\(.*\)"/\1/')
           if [ -z "$TAG" ]; then echo "ERROR: could not parse staging tag" && exit 1; fi
           echo "STAGING_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Promote staging tag to production
         run: |
-          sed -i "s/tag: \"[^\"]*\"/tag: \"$STAGING_TAG\"/" manifests/gallery-backend/values.yaml
+          sed -i "s/tag: \"[^\"]*\"/tag: \"$STAGING_TAG\"/" manifests/backend/values.yaml
 
       - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add manifests/gallery-backend/values.yaml
-          git commit -m "promote: gallery-backend $STAGING_TAG to prod"
+          git add manifests/backend/values.yaml
+          git commit -m "promote: plants-backend $STAGING_TAG to prod"
           git push
 
       - name: Write promote summary
