@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const { CORS_ORIGINS } = require('./config/env');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 
@@ -11,7 +12,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://boukingolts.dev', 'https://www.boukingolts.dev', 'https://staging.boukingolts.dev'],
+  origin: CORS_ORIGINS,
   credentials: true,
 }));
 

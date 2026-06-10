@@ -1,7 +1,7 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const User = require('../models/user.model'); // Adjust the path to your User model
-// require('dotenv').config();  // Ensure environment variables are loaded
+const User = require('../models/user.model');
+const { API_URL } = require('./env');
 
 const clientIDs = {
     web: {
@@ -19,7 +19,7 @@ const clientIDs = {
 passport.use('google', new GoogleStrategy({
     clientID: clientIDs.web.clientID,
     clientSecret: clientIDs.web.clientSecret,
-    callbackURL: 'https://boukingolts.art/api/auth/google/callback', // Must match the redirect URI in Google Cloud Console
+    callbackURL: `${API_URL}/api/auth/google/callback`,
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         // Find or create user
