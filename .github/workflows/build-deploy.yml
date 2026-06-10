@@ -49,25 +49,22 @@ jobs:
     name: Build Image
     if: github.ref == 'refs/heads/dev'
     needs: audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
       - name: Extract short SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image (amd64 for scan artifact)
+      - name: Build image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: false
-          platforms: linux/amd64
+          platforms: linux/arm64
           tags: ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
           outputs: type=docker,dest=/tmp/image.tar
           cache-from: type=gha
@@ -92,7 +89,7 @@ jobs:
     name: Security Scan
     if: github.ref == 'refs/heads/dev'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Extract short SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
@@ -140,21 +137,19 @@ jobs:
     name: Push Image
     if: github.ref == 'refs/heads/dev'
     needs: scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-
       - name: Extract short SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -163,21 +158,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push multi-arch image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Load and push image
+        run: |
+          docker load < /tmp/image.tar
+          docker push ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
 
       - name: Write push summary
         run: |
           echo "## Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- \`${{ env.IMAGE }}:${{ env.SHORT_SHA }}\` (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.IMAGE }}:${{ env.SHORT_SHA }}\` (linux/arm64)" >> $GITHUB_STEP_SUMMARY
 
   deploy-staging:
     name: Deploy to Staging
