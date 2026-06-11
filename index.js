@@ -36,7 +36,7 @@ app.get('/metrics', async (req, res) => {
 // app.use(verifyToken); // Ensure the user is authenticated first
 
 // const logRequest = require('./middleware/log.middleware');
-// app.use(logRequest); // suspended — see MongoDB Logging Analysis & Decision.md
+// app.use(logRequest); // suspended — either fix or remove, log spam
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
