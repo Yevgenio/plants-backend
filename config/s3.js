@@ -1,13 +1,13 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 const s3 = new S3Client({
-  ...(process.env.AWS_ENDPOINT_URL && { endpoint: process.env.AWS_ENDPOINT_URL }),
-  region: process.env.AWS_REGION || 'us-east-1',
+  ...(process.env.S3_ENDPOINT_URL && { endpoint: process.env.S3_ENDPOINT_URL }),
+  region: process.env.S3_REGION || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    accessKeyId: process.env.S3_ACCESS_KEY_ID,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
   },
-  forcePathStyle: !!process.env.AWS_ENDPOINT_URL,
+  forcePathStyle: !!process.env.S3_ENDPOINT_URL,
 });
 
 const bucket = () => process.env.S3_BUCKET;
